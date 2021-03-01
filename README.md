@@ -27,13 +27,17 @@ then build the `tau_wrap++` wrapper utility, run it, then build the generated wr
 To run the example, just type `make test`.  The output should look something like this:
 
 ```bash
-[khuck@cyclops clangwrap]$ make
+make -C src 
+make[1]: Entering directory `/storage/users/khuck/src/clangwrap/src'
+clang++ -c tau_wrap++.cpp -o tau_wrap++.o -fPIC -I. -g -O3 -std=c++11 -Wall -Werror
+clang++ -o tau_wrap++ tau_wrap++.o -lclang
+make[1]: Leaving directory `/storage/users/khuck/src/clangwrap/src'
+make -C simple 
+make[1]: Entering directory `/storage/users/khuck/src/clangwrap/simple'
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c app.cpp
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c secret.cpp
 g++ -shared -g -O3 -o libsecret.so secret.o
-clang++ -c tau_wrap++.cpp -o tau_wrap++.o -fPIC -I. -g -O3 -std=c++11 -Wall -Werror
-clang++ -o tau_wrap++ tau_wrap++.o -lclang
-./tau_wrap++ secret.h -w libsecret.so -n secret -c config.json
+../src/tau_wrap++ secret.h -w libsecret.so -n secret -c config.json
 Header file to be parsed: secret.h
 Library to be wrapped: libsecret.so
 Namespace to be wrapped: secret
@@ -49,8 +53,15 @@ Found Class: secret::Secret::InnerClass......................
 Wrote library wrapper to wr.cpp
 g++ -m64 		   	  	    -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -I/home/users/khuck/src/tau2/include -DPROFILING_ON                        -DTAU_GNU -DTAU_DOT_H_LESS_HEADERS                     -DTAU_LINUX_TIMERS                                 -DTAU_LARGEFILE -D_LARGEFILE64_SOURCE                    -DTAU_BFD   -DHAVE_GNU_DEMANGLE   -DHAVE_TR1_HASH_MAP    -DTAU_SS_ALLOC_SUPPORT  -DEBS_CLOCK_RES=1  -DTAU_STRSIGNAL_OK    -DTAU_TRACK_LD_LOADER                                -I/usr/local/packages/otf2/2.2_python3.8.0/include -DTAU_OTF2        -c wr.cpp -o secret_wrap.o
 g++ -m64 		   	  	    -shared -g -O3 -o libsecret_wrap.so secret_wrap.o -L/home/users/khuck/src/tau2/ibm64linux/lib -Wl,-rpath,/home/users/khuck/src/tau2/ibm64linux/lib -lTAUsh-gnu -L/usr/local/packages/binutils/2.34/lib -L/usr/local/packages/binutils/2.34/lib64 -Wl,-rpath,/usr/local/packages/binutils/2.34/lib -Wl,-rpath,/usr/local/packages/binutils/2.34/lib64 -lbfd -Wl,--export-dynamic -lrt -L/usr/local/packages/otf2/2.2_python3.8.0/lib -lotf2 -lotf2 -Wl,-rpath,/usr/local/packages/otf2/2.2_python3.8.0/lib -Wl,-rpath,/home/users/khuck/src/tau2/ibm64linux/lib/shared-gnu -ldl
-g++ -o app app.o -L/storage/users/khuck/src/clangwrap -Wl,-rpath,/storage/users/khuck/src/clangwrap -lsecret
+g++ -o app app.o -L/storage/users/khuck/src/clangwrap/simple -Wl,-rpath,/storage/users/khuck/src/clangwrap/simple -lsecret
+make[1]: Leaving directory `/storage/users/khuck/src/clangwrap/simple'
 [khuck@cyclops clangwrap]$ make test
+make -C src test
+make[1]: Entering directory `/storage/users/khuck/src/clangwrap/src'
+make[1]: Nothing to be done for `test'.
+make[1]: Leaving directory `/storage/users/khuck/src/clangwrap/src'
+make -C simple test
+make[1]: Entering directory `/storage/users/khuck/src/clangwrap/simple'
 rm -f profile.*
 tau_exec -T serial -loadlib=./libsecret_wrap.so ./app
 Inside Secret
