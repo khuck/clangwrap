@@ -50,13 +50,8 @@ inline void _wrap_assert(const char* expression, const char* file, int line)
     abort();
 }
 
-//#ifdef NDEBUG
-//#define WRAP_ASSERT(EXPRESSION) ((void)0)
-//#else
 #define WRAP_ASSERT(EXPRESSION) ((EXPRESSION) ? (void)0 : \
     _wrap_assert(#EXPRESSION, __FILE__, __LINE__))
-//#endif
-
 
 // trim from start (in place)
 static inline void ltrim(std::string &s) {
@@ -249,8 +244,11 @@ void writePreamble(std::string header, std::string library) {
 #include <iostream>
 #include <complex>
 
-//#define MARKER printf("*** %s %s: %d\n", __func__, __FILE__, __LINE__)
+#ifdef _DEBUG
+#define MARKER printf("*** %s %s: %d\n", __func__, __FILE__, __LINE__)
+#else
 #define MARKER
+#endif
 )";
     constexpr const char * loadHandle = R"(
 void * load_handle(void) {
