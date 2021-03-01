@@ -26,12 +26,13 @@ To run the example, just type `make test`.  The output should look something lik
 
 ```bash
 [khuck@cyclops clangwrap]$ make
+/bin/rm -f app.o app *.so *.o profile.* *.log tau_wrap++
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c app.cpp
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c secret.cpp
 g++ -shared -g -O3 -o libsecret.so secret.o
 clang++ -c tau_wrap++.cpp -o tau_wrap++.o -fPIC -I. -g -O3 -std=c++11 -Wall -Werror
 clang++ -o tau_wrap++ tau_wrap++.o -lclang
-tau_wrap++ secret.h -w libsecret.so -n secret -c config.json
+./tau_wrap++ secret.h -w libsecret.so -n secret -c config.json
 Header file to be parsed: secret.h
 Library to be wrapped: libsecret.so
 Namespace to be wrapped: secret
@@ -39,17 +40,11 @@ Configuration file to be used: config.json
 Writing the library symbol log to cursor.log
 Parsing symbols in namespace secret from library libsecret.so
 Writing the parser log to cursor.log
-......................................................................................................Alias: Dim = int
-..NF: T secret::Variable::Data() const
-.NF: void secret::Variable::anotherTemplate<int>(int)
-NF: void secret::Variable::anotherTemplate<float>(float)
-NF: void secret::Variable::anotherTemplate<void>(void)
-NF: void secret::Variable::anotherTemplate<double>(double)
-.......NF: void secret::Secret::foo4<int>(Variable<T, int>)
-NF: void secret::Secret::foo4<float>(Variable<T, float>)
-NF: void secret::Secret::foo4<void>(Variable<T, void>)
-NF: void secret::Secret::foo4<double>(Variable<T, double>)
-..............................................................
+..
+New Class: Variable
+..........
+Found Class: secret::Secret.
+Found Class: secret::Secret::InnerClass......................
 Wrote library wrapper to wr.cpp
 g++ -m64 		   	  	    -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -I/home/users/khuck/src/tau2/include -DPROFILING_ON                        -DTAU_GNU -DTAU_DOT_H_LESS_HEADERS                     -DTAU_LINUX_TIMERS                                 -DTAU_LARGEFILE -D_LARGEFILE64_SOURCE                    -DTAU_BFD   -DHAVE_GNU_DEMANGLE   -DHAVE_TR1_HASH_MAP    -DTAU_SS_ALLOC_SUPPORT  -DEBS_CLOCK_RES=1  -DTAU_STRSIGNAL_OK    -DTAU_TRACK_LD_LOADER                                -I/usr/local/packages/otf2/2.2_python3.8.0/include -DTAU_OTF2        -c wr.cpp -o secret_wrap.o
 g++ -m64 		   	  	    -shared -g -O3 -o libsecret_wrap.so secret_wrap.o -L/home/users/khuck/src/tau2/ibm64linux/lib -Wl,-rpath,/home/users/khuck/src/tau2/ibm64linux/lib -lTAUsh-gnu -L/usr/local/packages/binutils/2.34/lib -L/usr/local/packages/binutils/2.34/lib64 -Wl,-rpath,/usr/local/packages/binutils/2.34/lib -Wl,-rpath,/usr/local/packages/binutils/2.34/lib64 -lbfd -Wl,--export-dynamic -lrt -L/usr/local/packages/otf2/2.2_python3.8.0/lib -lotf2 -lotf2 -Wl,-rpath,/usr/local/packages/otf2/2.2_python3.8.0/lib -Wl,-rpath,/home/users/khuck/src/tau2/ibm64linux/lib/shared-gnu -ldl
@@ -77,9 +72,18 @@ NODE 0;CONTEXT 0;THREAD 0:
 %Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
               msec   total msec                          usec/call 
 ---------------------------------------------------------------------------------------
-100.0        0.183        0.206           1           4        206 .TAU application
-  3.9        0.008        0.008           1           0          8 *** int secret::Secret::foo1(secret::Dim a)***
-  2.9        0.006        0.006           1           0          6 *** std::string secret::Secret::getMessage() const***
-  2.4        0.005        0.005           1           0          5 *** void secret::Secret::foo3(std::string name)***
-  1.9        0.004        0.004           1           0          4 *** void secret::Secret::foo2(secret::Dim b, secret::Dim c)***
+100.0        0.267        0.433           1          13        433 .TAU application
+ 16.9        0.073        0.073           1           0         73 [WRAPPER] secret::Secret::Secret()
+  6.9         0.03         0.03           1           0         30 [WRAPPER] void secret::Secret::foo4<double, void>(Variable<double, void> a)
+  3.0        0.013        0.013           1           0         13 [WRAPPER] int secret::Secret::foo1(secret::Dim a)
+  1.6        0.007        0.007           1           0          7 [WRAPPER] secret::Secret::~Secret()
+  1.6        0.007        0.007           1           0          7 [WRAPPER] void secret::Secret::foo3(std::string name)
+  1.6        0.007        0.007           1           0          7 [WRAPPER] void secret::Secret::foo4<float, void>(Variable<float, void> a)
+  1.4        0.006        0.006           1           0          6 [WRAPPER] void secret::Secret::foo2(secret::Dim b, secret::Dim c)
+  1.2        0.005        0.005           1           0          5 [WRAPPER] int secret::Variable<int, void>::Data() const
+  1.2        0.005        0.005           1           0          5 [WRAPPER] std::string secret::Secret::getMessage() const
+  1.2        0.005        0.005           1           0          5 [WRAPPER] void secret::Secret::foo4<int, void>(Variable<int, void> a)
+  1.2        0.005        0.005           1           0          5 [WRAPPER] void secret::Variable<float, void>::anotherTemplate<int>(int a)
+  0.7        0.003        0.003           1           0          3 [WRAPPER] secret::Secret::InnerClass::InnerClass()
+  0.0            0            0           1           0          0 [WRAPPER] secret::Secret::InnerClass::~InnerClass()
 ```
