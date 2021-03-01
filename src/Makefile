@@ -1,3 +1,11 @@
+# ****************************************************************************
+# **  TAU Portable Profiling Package                                        **
+# **  http://tau.uoregon.edu                                                **
+# ****************************************************************************
+# **  Copyright 2021                                                        **
+# **  Department of Computer and Information Science, University of Oregon  **
+# ****************************************************************************
+
 PWD=$(shell pwd)
 MYCXXFLAGS=-fPIC -I. -g -O3 -std=c++11 -Wall -Werror
 LDFLAGS = -shared -g -O3

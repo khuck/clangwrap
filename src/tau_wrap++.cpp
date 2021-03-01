@@ -1,18 +1,17 @@
 /****************************************************************************
- **                      TAU Portable Profiling Package                     **
- **                      http://www.cs.uoregon.edu/research/paracomp/tau    **
- *****************************************************************************
- **    Copyright 2021                                                       **
- **    Department of Computer and Information Science, University of Oregon **
- **    Advanced Computing Laboratory, Los Alamos National Laboratory        **
+ **  TAU Portable Profiling Package                                        **
+ **  http://tau.uoregon.edu                                                **
+ ****************************************************************************
+ **  Copyright 2021                                                        **
+ **  Department of Computer and Information Science, University of Oregon  **
  ****************************************************************************/
-/***************************************************************************
- **      File            : tau_wrap.cpp                                    **
+/****************************************************************************
+ **      File            : tau_wrap++.cpp                                  **
  **      Description     : Generates a wrapper library for external pkgs   **
  **                        for instrumentation with TAU.                   **
- **      Author          : Sameer Shende                                   **
- **      Contact         : sameer@cs.uoregon.edu sameer@paratools.com      **
- **      Documentation   :                                                 **
+ **      Author          : Kevin Huck                                      **
+ **      Contact         : khuck@cs.uoregon.edu                            **
+ **      Documentation   : https://github.com/khuck/clangwrap              **
  ***************************************************************************/
 
 #define _GLIBCXX_USE_CXX11_ABI 1

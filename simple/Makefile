@@ -1,3 +1,11 @@
+# ****************************************************************************
+# **  TAU Portable Profiling Package                                        **
+# **  http://tau.uoregon.edu                                                **
+# ****************************************************************************
+# **  Copyright 2021                                                        **
+# **  Department of Computer and Information Science, University of Oregon  **
+# ****************************************************************************
+
 include ${TAU_MAKEFILE}
 TAUCXXFLAGS=$(shell tau_cxx.sh -tau:showincludes) $(TAU_DEFS)
 TAUCXXLIBS=$(shell tau_cxx.sh -tau:showsharedlibs)

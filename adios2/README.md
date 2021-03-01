@@ -13,8 +13,10 @@ cd tau2
 # Configure with MPI and pthread settings - no other settings necessary
 ./configure -mpi -pthread
 make -j install
+# Set the TAU makefile and add TAU to your path
 TAU_ARCH=`./utils/archfind`
 export TAU_MAKEFILE=`pwd`/${TAU_ARCH}/lib/Makefile.tau-gnu-mpi-pthread
+export PATH=`pwd`/${TAU_ARCH}/bin:${PATH}
 ```
 
 To build this example, first build `tau_wrap++` in the main `src` directory.
