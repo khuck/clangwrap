@@ -26,7 +26,6 @@ To run the example, just type `make test`.  The output should look something lik
 
 ```bash
 [khuck@cyclops clangwrap]$ make
-/bin/rm -f app.o app *.so *.o profile.* *.log tau_wrap++
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c app.cpp
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c secret.cpp
 g++ -shared -g -O3 -o libsecret.so secret.o
