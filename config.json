@@ -1,0 +1,31 @@
+{
+    "symbol_map": [
+        {
+            "from": "ompi_communicator_t*",
+            "to": "MPI_Comm"
+        }
+    ],
+    "parser_flags": [
+        "-x",
+        "c++",
+        "-std=c++11",
+        "-I.",
+        "-I/packages/llvm/11.0.1/include/c++/v1",
+        "-I/packages/llvm/11.0.1/include",
+        "-I/usr/local/packages/gcc/7.3.0/lib/gcc/powerpc64le-unknown-linux-gnu/7.3.0/include",
+        "-I/usr/local/packages/gcc/7.3.0/lib/gcc/powerpc64le-unknown-linux-gnu/7.3.0/include-fixed",
+        "-I/usr/include",
+        "-I/usr/local/include"
+    ],
+    "template_types": [
+        "int",
+        "float",
+        "void",
+        "double"
+    ],
+    "classes to skip": [
+    ],
+    "methods to skip": [
+    ],
+    "TAU timer group": "SECRET"
+}
