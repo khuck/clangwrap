@@ -2,7 +2,7 @@
 Clang-based wrapper for C++ libraries
 
 This wrapper is based on the `tau_wrap` utility that comes with TAU.
-The only pre-requisite is a working Clang++ compiler.
+The only pre-requisite is a working clang++ and a working g++ compiler.
 
 To demonstrate this simple example, do the following:
 
@@ -27,12 +27,13 @@ then build the `tau_wrap++` wrapper utility, run it, then build the generated wr
 To run the example, just type `make test`.  The output should look something like this:
 
 ```bash
-make -C src 
+[khuck@cyclops clangwrap]$ make
+make -C src
 make[1]: Entering directory `/storage/users/khuck/src/clangwrap/src'
 clang++ -c tau_wrap++.cpp -o tau_wrap++.o -fPIC -I. -g -O3 -std=c++11 -Wall -Werror
 clang++ -o tau_wrap++ tau_wrap++.o -lclang
 make[1]: Leaving directory `/storage/users/khuck/src/clangwrap/src'
-make -C simple 
+make -C simple
 make[1]: Entering directory `/storage/users/khuck/src/clangwrap/simple'
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c app.cpp
 g++ -fPIC -I. -g -O3 -std=c++11 -Wall -Werror -c secret.cpp
@@ -82,7 +83,7 @@ Reading Profile files in profile.*
 NODE 0;CONTEXT 0;THREAD 0:
 ---------------------------------------------------------------------------------------
 %Time    Exclusive    Inclusive       #Call      #Subrs  Inclusive Name
-              msec   total msec                          usec/call 
+              msec   total msec                          usec/call
 ---------------------------------------------------------------------------------------
 100.0        0.267        0.433           1          13        433 .TAU application
  16.9        0.073        0.073           1           0         73 [WRAPPER] secret::Secret::Secret()
