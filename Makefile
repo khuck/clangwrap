@@ -1,18 +1,12 @@
-# To use, update these settings:
-TAU_MAKEFILE ?=../tau2/include/Makefile
-CXX=g++
-
-# Everything else should not need to be modified...
-
 include ${TAU_MAKEFILE}
-TAUCC=$(TAU_CXX)
 TAUCXXFLAGS=$(shell tau_cxx.sh -tau:showincludes) $(TAU_DEFS)
 TAUCXXLIBS=$(shell tau_cxx.sh -tau:showsharedlibs)
+CXX=g++
 
 PWD=$(shell pwd)
-CXXFLAGS=-fPIC -I. -g -O0 -std=c++11 -Wall -Werror
+MYCXXFLAGS=-fPIC -I. -g -O3 -std=c++11 -Wall -Werror
 LIBS = -L$(PWD) -Wl,-rpath,$(PWD) -lsecret
-LDFLAGS = -shared -g -O0
+LDFLAGS = -shared -g -O3
 
 app: app.o libsecret.so libsecret_wrap.so
 	$(CXX) -o app app.o $(LIBS)
@@ -21,16 +15,16 @@ libsecret.so: secret.o secret.h
 	$(CXX) $(LDFLAGS) -o $@ $<
 
 secret.o: secret.cpp secret.h
-	$(CXX) $(CXXFLAGS) -c $<
+	$(CXX) $(MYCXXFLAGS) -c $<
 
 app.o: app.cpp secret.h
-	$(CXX) $(CXXFLAGS) -c $<
+	$(CXX) $(MYCXXFLAGS) -c $<
 
 libsecret_wrap.so: secret_wrap.o
-	$(TAUCC) $(LDFLAGS) -o $@ $< $(TAUCXXLIBS) -ldl
+	$(TAU_CXX) $(LDFLAGS) -o $@ $< $(TAUCXXLIBS) -ldl
 
 secret_wrap.o: wr.cpp
-	$(TAUCC) $(CXXFLAGS) $(TAUCXXFLAGS) -c $< -o $@
+	$(TAU_CXX) $(MYCXXFLAGS) $(TAUCXXFLAGS) -c $< -o $@
 
 # tau_wrap++ has to be compiled and linked with clang++!
 tau_wrap++: tau_wrap++.o
@@ -38,7 +32,7 @@ tau_wrap++: tau_wrap++.o
 
 # tau_wrap++ has to be compiled and linked with clang++!
 tau_wrap++.o: tau_wrap++.cpp
-	clang++ -c $< -o $@ $(CXXFLAGS)
+	clang++ -c $< -o $@ $(MYCXXFLAGS)
 
 wr.cpp: tau_wrap++ config.json secret.h libsecret.so
 	tau_wrap++ secret.h -w libsecret.so -n secret -c config.json
