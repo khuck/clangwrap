@@ -1,0 +1,55 @@
+{
+    "symbol_map": [
+        {
+            "from": "ompi_communicator_t*",
+            "to": "MPI_Comm"
+        }
+    ],
+    "parser_flags": [
+        "-x",
+        "c++",
+        "-std=c++11",
+        "-DADIOS2_USE_MPI",
+        "-I./include",
+        "-I/packages/llvm/11.0.1/include/c++/v1",
+        "-I/packages/llvm/11.0.1/include",
+        "-I/usr/local/packages/gcc/7.3.0/lib/gcc/powerpc64le-unknown-linux-gnu/7.3.0/include",
+        "-I/usr/local/packages/gcc/7.3.0/lib/gcc/powerpc64le-unknown-linux-gnu/7.3.0/include-fixed",
+        "-I/usr/local/packages/openmpi/4.0.1-gcc7.3/include",
+        "-I/usr/include",
+        "-I/usr/local/include"
+    ],
+    "template_types": [
+        "char",
+        "signed char",
+        "unsigned char",
+        "short",
+        "unsigned short",
+        "int",
+        "long int",
+        "long long int",
+        "long",
+        "long long",
+        "unsigned int",
+        "unsigned long int",
+        "unsigned long long int",
+        "unsigned long",
+        "unsigned long long",
+        "float",
+        "double",
+        "long double",
+        "std::complex<float>",
+        "std::complex<double>",
+        "std::string"
+    ],
+    "classes to skip": [
+        "adios2::detail::Span::iterator"
+    ],
+    "methods to skip": [
+        "adios2::Variable::Operations",
+        "adios2::ADIOS::DefineCallBack",
+        "adios2::detail::Span::begin",
+        "adios2::detail::Span::end"
+    ],
+    "TAU timer group": "ADIOS2_API"
+}
