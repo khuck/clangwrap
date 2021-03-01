@@ -14,8 +14,10 @@ cd tau2
 # Configure with simple settings - no complicated settings necessary
 ./configure
 make -j install
+# Set the TAU makefile and add TAU to your path
 TAU_ARCH=`./utils/archfind`
 export TAU_MAKEFILE=`pwd`/${TAU_ARCH}/lib/Makefile.tau-gnu
+export PATH=`pwd`/${TAU_ARCH}/bin:${PATH}
 ```
 
 Modify the Makefile (if necessary - it shouldn't be necessary).
