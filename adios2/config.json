@@ -51,5 +51,21 @@
         "adios2::detail::Span::begin",
         "adios2::detail::Span::end"
     ],
-    "TAU timer group": "ADIOS2_API"
+    "TAU timer group": "ADIOS2_API",
+    "enable trace plugin": true,
+    "printable trace types": [
+        "char",
+        "short",
+        "int",
+        "long int",
+        "long long int",
+        "long",
+        "long long",
+        "float",
+        "double",
+        "size_t",
+        "std::complex<float>",
+        "std::complex<double>",
+        "std::string"
+    ]
 }

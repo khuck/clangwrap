@@ -34,6 +34,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <set>
 #include <clang-c/Index.h>
 #include <cctype>
 #include <locale>
@@ -101,6 +102,8 @@ bool strict_typing = false; /* by default unless --strict option is used. */
 
 /* useful constant strings */
 const std::string _const{"const"};
+const std::string _signed{"signed "};
+const std::string _unsigned{"unsigned "};
 const std::string _noexcept{"noexcept"};
 const std::string _empty{""};
 const std::string _space{" "};
@@ -119,6 +122,7 @@ const std::string skip_classes{"classes to skip"};
 const std::string skip_methods{"methods to skip"};
 const std::string tau_timer_group{"TAU timer group"};
 const std::string enable_trace_plugin{"enable trace plugin"};
+const std::string printable_trace_types{"printable trace types"};
 
 /* This is the default configuration.
  * For different environments, use a configuration file.
@@ -246,7 +250,7 @@ std::string get_tau_timer_group() {
 
 
 /* Write the preamble to the source file */
-void writePreamble(std::string header, std::string library) {
+void writePreamble(std::string header, std::vector<std::string> libraries) {
     constexpr const char * headers = R"(
 #include <Profile/Profiler.h>
 #include <Profile/TauPluginTypes.h>
@@ -264,11 +268,9 @@ void writePreamble(std::string header, std::string library) {
 #endif
 )";
     constexpr const char * loadHandle = R"(
-void * load_handle(void) {
+void * load_handle(const char * tau_orig_libname) {
     MARKER;
-    const char * tau_orig_libname = ")";
-    constexpr const char * loadHandle2 = R"(";
-    static void *handle = (void *) dlopen(tau_orig_libname, RTLD_NOW);
+    void *handle = (void *) dlopen(tau_orig_libname, RTLD_NOW);
     if (handle == NULL) {
         std::cerr << "Error opening library "
                   << tau_orig_libname
@@ -278,18 +280,32 @@ void * load_handle(void) {
     return handle;
 }
 )";
+    constexpr const char * loadHandles = R"(
+std::vector<void*> load_handles() {
+    std::vector<void*> handles;
+    if (handles.empty()) {
+        const char * names[] = {)";
+    constexpr const char * loadHandles2 = R"( };
+        for (auto n : names) {
+            handles.push_back(load_handle(n));
+        }
+    }
+    return handles;
+}
+)";
     constexpr const char * loadSymbol = R"(
 template<class T> T* load_symbol(char const* name) {
     MARKER;
-    static auto handle = load_handle();
-    void * tmp = dlsym(handle,name);
-    if (tmp == NULL) {
-        std::cerr << "Error obtaining symbol "
-                  << name
-                  << " from library"
-                  << std::endl;
+    static auto handles = load_handles();
+    for(auto h : handles) {
+        void * tmp = dlsym(h,name);
+        if (tmp != NULL) {
+            return reinterpret_cast<T*>(tmp);
+        }
     }
-    return reinterpret_cast<T*>(tmp);
+    std::cerr << "Error obtaining symbol " << name
+              << " from libraries!" << std::endl;
+    return nullptr;
 }
 )";
     constexpr const char * helperFunctions = R"(
@@ -349,13 +365,20 @@ void Tau_plugin_trace_current_timer(const char * name) {
     wrapper  << "\"\n";
     // write our utility functions
     wrapper << loadHandle;
-    i = library.rfind(sep, library.length());
-    if (i != std::string::npos) {
-        wrapper << (library.substr(i+1, library.length()));
-    } else {
-        wrapper << library;
+    wrapper << loadHandles;
+    std::string delimiter = "\"";
+    for(auto library : libraries) {
+        wrapper << delimiter;
+        i = library.rfind(sep, library.length());
+        if (i != std::string::npos) {
+            wrapper << (library.substr(i+1, library.length()));
+        } else {
+            wrapper << library;
+        }
+        wrapper << "\"";
+        delimiter = ", \"";
     }
-    wrapper << loadHandle2;
+    wrapper << loadHandles2;
     wrapper << loadSymbol;
     wrapper << helperFunctions << "\n";
     bool do_trace = false;
@@ -604,11 +627,42 @@ bool hasReturnType(std::string methodReturnType, bool isConstructor, bool isDest
     return true;
 }
 
+std::set<std::string> loadPrintableTraceTypes() {
+    std::set<std::string> typeset;
+    if (configuration.count(printable_trace_types) > 0) {
+        auto printable_types = configuration[printable_trace_types];
+        for (auto t : printable_types) {
+            std::string tmp{t};
+            typeset.insert(tmp);
+        }
+    }
+    return typeset;
+}
+
+bool isPrintable(std::string type) {
+    static std::set<std::string> typeset = loadPrintableTraceTypes();
+    // addresses are printable.
+    if (typeIsAddress(type)) {
+        return true;
+    }
+    // remove any const, (un)signed, or reference (&)
+    replace_all(type, _const, _empty);
+    replace_all(type, _unsigned, _empty);
+    replace_all(type, _signed, _empty);
+    replace_all(type, _reference, _empty);
+    trim(type);
+    if (typeset.count(type) > 0) {
+        return true;
+    }
+    return false;
+}
+
 void writeTraceEvent(std::ofstream& wrapper,
     std::string& fullMethodName,
     std::string& methodReturnType,
     std::vector<std::string>& parameterNames,
-    bool hasReturn
+    std::vector<std::string>& parameterTypes,
+    bool hasReturn, bool hasThis
     ) {
     wrapper << "std::stringstream ss;\n";
     wrapper << "ss << \"\\\"type\\\": \\\"";
@@ -617,10 +671,26 @@ void writeTraceEvent(std::ofstream& wrapper,
     wrapper << fullMethodName;
     wrapper << "\\\"";
     if (hasReturn) {
-        wrapper << ", \\\"return\\\": \\\"\" << retval << \"\\\"";
+        wrapper << ", \\\"return\\\": \\\"\" << ";
+        if (isPrintable(methodReturnType)) {
+            wrapper << "retval << \"\\\"";
+        } else {
+            wrapper << "(void*)(std::addressof(retval)) << \"\\\"";
+        }
     }
-    for (auto p : parameterNames) {
-        wrapper << ", \\\"" << p << "\\\": \\\"\" << " << p << " << \"\\\"";
+    if (hasThis) {
+        wrapper << ", \\\"this\\\": \\\"\" << (void*)this << \"\\\"";
+    }
+    for (size_t i = 0; i < parameterTypes.size() ; i++) {
+        wrapper << ", \\\"" << parameterNames[i] << "\\\": \\\"\" << ";
+        if (isPrintable(parameterTypes[i])) {
+            wrapper << parameterNames[i];
+        } else {
+            wrapper << "(void*)(std::addressof(";
+            wrapper << parameterNames[i];
+            wrapper << "))";
+        }
+        wrapper << " << \"\\\"";
     }
     wrapper << "\";\n";
     wrapper << "std::string tmp{ss.str()};\n";
@@ -794,8 +864,9 @@ int Secret::foo1(int a1)  {
     }
     if (do_trace) {
         writeTraceEvent(wrapper, fullMethodName,
-            methodReturnType, parameterNames,
-            (hasReturnType(methodReturnType, isConstructor, isDestructor)));
+            methodReturnType, parameterNames, parameterTypes,
+            (hasReturnType(methodReturnType, isConstructor, isDestructor)),
+            (!methodStatic && className.size() > 0));
     }
     if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
         if(typeIsAddress(methodReturnType) || typeIsReference(methodReturnType)) {
@@ -1300,7 +1371,6 @@ void handleClassTemplate(CXCursor c, CXCursorKind kind, ASTState* state) {
     state->className.push_back(getCursorName(c));
     std::vector<std::string> classTemplates;
     state->classTemplates.push_back(classTemplates);
-    //std::cout << std::endl << "New Class: " << getCursorName(c) << std::endl;
     printCursor(state, kind, c);
     if (!skipThisClass(state)) {
         clang_visitChildren(c, traverse, state);
@@ -1517,7 +1587,7 @@ void parse_header(const std::string& filename) {
 
 void parse_symbols(std::string libname) {
     std::ofstream symbolLog;
-    symbolLog.open("symbol.log");
+    symbolLog.open("symbol.log", std::fstream::out | std::fstream::app);
     std::cout << "Writing the library symbol log to cursor.log" << std::endl;
     // call `nm libsecret.so | grep " [TW] " | grep "_Z"` and capture output
     std::stringstream ss;
@@ -1598,7 +1668,7 @@ void parse_symbols(std::string libname) {
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv)
 {
-    std::string libName("");
+    std::vector<std::string> libNames;
     std::string configFile("");
 
     if (argc < 2) {
@@ -1611,8 +1681,8 @@ int main(int argc, char **argv)
 
     for(int i=1; i<argc; i++) {
         if (strcmp(argv[i], "-w") == 0) {
-            libName = argv[i+1];
-            std::cout << "Library to be wrapped: " << libName << std::endl;
+            libNames.push_back(std::string(argv[i+1]));
+            std::cout << "Library to be wrapped: " << argv[i+1] << std::endl;
         }
         else if (strcmp(argv[i], "-n") == 0) {
             mainNamespace = std::string(argv[i+1]);
@@ -1625,8 +1695,11 @@ int main(int argc, char **argv)
     }
 
     readConfigFile(configFile);
-    writePreamble(headerName, libName);
-    parse_symbols(libName);
+    writePreamble(headerName, libNames);
+    std::remove("symbols.log");
+    for(auto lib : libNames) {
+        parse_symbols(lib);
+    }
     parse_header(headerName);
     wrapper.close();
     std::cout << std::endl;
