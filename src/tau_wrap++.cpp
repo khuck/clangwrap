@@ -118,6 +118,7 @@ const std::string template_types{"template_types"};
 const std::string skip_classes{"classes to skip"};
 const std::string skip_methods{"methods to skip"};
 const std::string tau_timer_group{"TAU timer group"};
+const std::string enable_trace_plugin{"enable trace plugin"};
 
 /* This is the default configuration.
  * For different environments, use a configuration file.
@@ -233,10 +234,23 @@ std::map<std::string, symbolData_t> symbolMap;
 std::map<std::string, std::string> aliasMap;
 std::string mainNamespace{"secret"};
 
+std::string get_tau_timer_group() {
+    if (configuration.count(tau_timer_group) > 0) {
+        std::string group{configuration[tau_timer_group]};
+        return group;
+    }
+    std::string group{mainNamespace};
+    transform(group.begin(), group.end(), group.begin(), ::toupper);
+    return group;
+}
+
+
 /* Write the preamble to the source file */
 void writePreamble(std::string header, std::string library) {
     constexpr const char * headers = R"(
 #include <Profile/Profiler.h>
+#include <Profile/TauPluginTypes.h>
+#include <Profile/TauPluginInternals.h>
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <string>
@@ -300,6 +314,16 @@ public:
     }
 };
 )";
+    constexpr const char * tauPluginFunction = R"(
+void Tau_plugin_trace_current_timer(const char * name) {
+    /*Invoke plugins only if both plugin path and plugins are specified*/
+    if(TauEnv_get_plugins_enabled()) {
+        Tau_plugin_event_current_timer_exit_data_t plugin_data;
+        plugin_data.name_prefix = name;
+        Tau_util_invoke_callbacks(TAU_PLUGIN_EVENT_CURRENT_TIMER_EXIT, name, &plugin_data);
+    }
+}
+)";
     constexpr const char * tauMacro = R"(
 #define WRAPPER(name) \
   static void *tauFI = 0; \
@@ -334,17 +358,16 @@ public:
     wrapper << loadHandle2;
     wrapper << loadSymbol;
     wrapper << helperFunctions << "\n";
+    bool do_trace = false;
+    if (configuration.count(enable_trace_plugin) > 0) {
+        do_trace = configuration[enable_trace_plugin];
+    }
+    if (do_trace) {
+        wrapper << tauPluginFunction;
+    }
     // write our tau macro
     std::string tmp{tauMacro};
-    // if the user specified a TAU group, use it
-    if (configuration.count(tau_timer_group) > 0) {
-        std::string group{configuration[tau_timer_group]};
-        replace_all(tmp, "SECRET", group);
-    } else {
-        std::string group{mainNamespace};
-        transform(group.begin(), group.end(), group.begin(), ::toupper);
-        replace_all(tmp, "SECRET", group);
-    }
+    replace_all(tmp, "SECRET", get_tau_timer_group());
     wrapper << tmp << "\n";
     return;
 }
@@ -581,6 +604,29 @@ bool hasReturnType(std::string methodReturnType, bool isConstructor, bool isDest
     return true;
 }
 
+void writeTraceEvent(std::ofstream& wrapper,
+    std::string& fullMethodName,
+    std::string& methodReturnType,
+    std::vector<std::string>& parameterNames,
+    bool hasReturn
+    ) {
+    wrapper << "std::stringstream ss;\n";
+    wrapper << "ss << \"\\\"type\\\": \\\"";
+    wrapper << get_tau_timer_group();
+    wrapper << "\\\", \\\"function\\\": \\\"";
+    wrapper << fullMethodName;
+    wrapper << "\\\"";
+    if (hasReturn) {
+        wrapper << ", \\\"return\\\": \\\"\" << retval << \"\\\"";
+    }
+    for (auto p : parameterNames) {
+        wrapper << ", \\\"" << p << "\\\": \\\"\" << " << p << " << \"\\\"";
+    }
+    wrapper << "\";\n";
+    wrapper << "std::string tmp{ss.str()};\n";
+    wrapper << "Tau_plugin_trace_current_timer(tmp.c_str());\n";
+}
+
 void writeMethod(
     std::vector<std::string> namespaceName,
     std::vector<std::string> className,
@@ -679,6 +725,7 @@ int Secret::foo1(int a1)  {
         ss2 << cn << "::";
     }
     ss2 << methodName;
+    std::string fullMethodName{ss2.str()};
     ss2 << args.str();
     if (methodIsConst(methodType)) {
         ss2 << _space << _const;
@@ -740,6 +787,16 @@ int Secret::foo1(int a1)  {
         multiple = true;
     }
     wrapper << ");\n";
+    /* Optionally, generate a timer exit plugin call */
+    bool do_trace = false;
+    if (configuration.count(enable_trace_plugin) > 0) {
+        do_trace = configuration[enable_trace_plugin];
+    }
+    if (do_trace) {
+        writeTraceEvent(wrapper, fullMethodName,
+            methodReturnType, parameterNames,
+            (hasReturnType(methodReturnType, isConstructor, isDestructor)));
+    }
     if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
         if(typeIsAddress(methodReturnType) || typeIsReference(methodReturnType)) {
             wrapper << "        return retval;\n";
@@ -1243,9 +1300,11 @@ void handleClassTemplate(CXCursor c, CXCursorKind kind, ASTState* state) {
     state->className.push_back(getCursorName(c));
     std::vector<std::string> classTemplates;
     state->classTemplates.push_back(classTemplates);
-    std::cout << std::endl << "New Class: " << getCursorName(c) << std::endl;
+    //std::cout << std::endl << "New Class: " << getCursorName(c) << std::endl;
     printCursor(state, kind, c);
-    clang_visitChildren(c, traverse, state);
+    if (!skipThisClass(state)) {
+        clang_visitChildren(c, traverse, state);
+    }
     state->className.pop_back();
     state->inClassTemplate = false;
     state->classTemplates.pop_back();

@@ -10,6 +10,7 @@
 
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 namespace secret {
@@ -23,6 +24,10 @@ public:
     T Data() const;
     template <typename V>
     void anotherTemplate (V a);
+    friend std::ostream& operator<<( std::ostream& o, const Variable& v ) {
+        o << v.t;
+        return o;
+    }
 };
 
 class Secret {

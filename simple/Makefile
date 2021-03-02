@@ -41,6 +41,7 @@ clean:
 	/bin/rm -f app.o app *.so *.o profile.* *.log wr.cpp
 
 test: app ../src/tau_wrap++ libsecret_wrap.so
-	rm -f profile.*
+	rm -rf profile.* skel
 	tau_exec -T serial -loadlib=./libsecret_wrap.so ./app
 	pprof
+	#cat skel/rank00000.trace

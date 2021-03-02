@@ -27,5 +27,6 @@
     ],
     "methods to skip": [
     ],
-    "TAU timer group": "SECRET"
+    "TAU timer group": "SECRET",
+    "enable trace plugin": false
 }
