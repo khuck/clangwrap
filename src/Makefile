@@ -7,8 +7,8 @@
 # ****************************************************************************
 
 PWD=$(shell pwd)
-MYCXXFLAGS=-fPIC -I. -g -O0 -std=c++11 -Wall -Werror
-LDFLAGS = -shared -g -O0
+MYCXXFLAGS=-fPIC -I. -g -O3 -std=c++11 -Wall -Werror
+LDFLAGS = -shared -g -O3
 
 all: tau_wrap++
 

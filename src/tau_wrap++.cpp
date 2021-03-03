@@ -226,7 +226,7 @@ void readConfigFile(std::string filename) {
         cfg >> configuration;
         cfg.close();
     } catch (...) {
-        std::cerr << "Error reading tau_monitoring.json file!" << std::endl;
+        std::cerr << "Error reading config.json file!" << std::endl;
         abort();
     }
 }
@@ -258,6 +258,9 @@ void writePreamble(std::string header, std::vector<std::string> libraries) {
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <string>
+#include <vector>
+#include <set>
+#include <map>
 #include <iostream>
 #include <complex>
 
@@ -329,6 +332,91 @@ public:
         return false;
     }
 };
+
+/* Helper to trace vector parameters */
+template < class T >
+std::string ToString(const std::vector<T>& v) {
+    std::stringstream ss;
+    ss << "[";
+    for (const auto &e : v) {
+        ss << e;
+        if(e != v.rbegin()) { ss << ","; }
+    }
+    ss << "]";
+    std::string tmp{ss.str()};
+    return tmp;
+}
+
+template < class T >
+std::ostream& std::operator<<(std::ostream& os, const std::vector<T>& v) {
+    os << ToString(v);
+    return os;
+}
+
+template < class T >
+std::ostream& std::operator<<(std::ostream& os, std::vector<T>& v) {
+    os << ToString(v);
+    return os;
+}
+
+/* Helper to trace set parameters */
+template < class T >
+std::ostream& std::operator<<(std::ostream& os, const std::set<T>& s) {
+    os << "[";
+    for (const auto &e : s) {
+        os << e;
+        if(e != s.rbegin()) { os << ","; }
+    }
+    os << "]";
+    return os;
+}
+
+template < class T >
+std::ostream& std::operator<<(std::ostream& os, std::set<T>& s) {
+    os << "[";
+    for (const auto &e : s) {
+        os << e;
+        if(e != s.rbegin()) { os << ","; }
+    }
+    os << "]";
+    return os;
+}
+
+/* Helper to trace pair parameters */
+template < class T, class V >
+std::ostream& std::operator<<(std::ostream& os, const std::pair<T,V>& p) {
+    os << "(" << p.first << "," << p.second << ')';
+    return os;
+}
+
+template < class T, class V >
+std::ostream& std::operator<<(std::ostream& os, std::pair<T,V>& p) {
+    os << "(" << p.first << "," << p.second << ')';
+    return os;
+}
+
+/* Helper to trace map parameters */
+template < class T, class V >
+std::ostream& std::operator<<(std::ostream& os, const std::map<T,V>& m) {
+    os << "[";
+    for (const auto &kv : m) {
+        os << kv.first << ":" << kv.second;
+        if(kv != kv.rbegin()) { os << ","; }
+    }
+    os << "]";
+    return os;
+}
+
+template < class T, class V >
+std::ostream& std::operator<<(std::ostream& os, std::map<T,V>& m) {
+    os << "[";
+    for (const auto &kv : m) {
+        os << kv.first << ":" << kv.second;
+        if(kv != kv.rbegin()) { os << ","; }
+    }
+    os << "]";
+    return os;
+}
 )";
     constexpr const char * tauPluginFunction = R"(
 void Tau_plugin_trace_current_timer(const char * name) {
@@ -657,6 +745,29 @@ bool isPrintable(std::string type) {
     return false;
 }
 
+std::string getClassFromMethod(std::string fullMethodName) {
+    size_t i = fullMethodName.rfind("::", fullMethodName.length());
+    if (i != std::string::npos) {
+        std::string tmp{fullMethodName.substr(0, i)};
+        // trim any template specializations
+        size_t i = tmp.find("<", 0);
+        if (i != std::string::npos) {
+            return tmp.substr(0, i);
+        }
+        return tmp;
+    }
+    return fullMethodName;
+}
+
+std::string trimSpecialization(std::string fullType) {
+    // trim any template specializations
+    size_t i = fullType.find("<", 0);
+    if (i != std::string::npos) {
+        return fullType.substr(0, i);
+    }
+    return fullType;
+}
+
 void writeTraceEvent(std::ofstream& wrapper,
     std::string& fullMethodName,
     std::string& methodReturnType,
@@ -672,18 +783,24 @@ void writeTraceEvent(std::ofstream& wrapper,
     wrapper << "\\\"";
     if (hasReturn) {
         wrapper << ", \\\"return\\\": \\\"\" << ";
-        if (isPrintable(methodReturnType)) {
+        if (isPrintable(trimSpecialization(methodReturnType))) {
             wrapper << "retval << \"\\\"";
         } else {
             wrapper << "(void*)(std::addressof(retval)) << \"\\\"";
         }
     }
     if (hasThis) {
-        wrapper << ", \\\"this\\\": \\\"\" << (void*)this << \"\\\"";
+        std::string classType{getClassFromMethod(fullMethodName)};
+        //std::cout << classType << std::endl;
+        if (isPrintable(classType)) {
+            wrapper << ", \\\"this\\\": \\\"\" << *this << \"\\\"";
+        } else {
+            wrapper << ", \\\"this\\\": \\\"\" << (void*)this << \"\\\"";
+        }
     }
     for (size_t i = 0; i < parameterTypes.size() ; i++) {
         wrapper << ", \\\"" << parameterNames[i] << "\\\": \\\"\" << ";
-        if (isPrintable(parameterTypes[i])) {
+        if (isPrintable(trimSpecialization(parameterTypes[i]))) {
             wrapper << parameterNames[i];
         } else {
             wrapper << "(void*)(std::addressof(";
@@ -788,14 +905,16 @@ int Secret::foo1(int a1)  {
     if (!isConstructor && !isDestructor) {
         ss2 << methodReturnType << _space;
     }
+    std::stringstream ss3;
     for (auto ns : namespaceName ) {
-        ss2 << ns << "::";
+        ss3 << ns << "::";
     }
     for (auto cn : className ) {
-        ss2 << cn << "::";
+        ss3 << cn << "::";
     }
-    ss2 << methodName;
-    std::string fullMethodName{ss2.str()};
+    ss3 << methodName;
+    std::string fullMethodName{ss3.str()};
+    ss2 << ss3.str();
     ss2 << args.str();
     if (methodIsConst(methodType)) {
         ss2 << _space << _const;

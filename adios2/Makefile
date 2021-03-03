@@ -10,8 +10,8 @@ include ${TAU_MAKEFILE}
 TAUCXXFLAGS=$(shell tau_cxx.sh -tau:showincludes) $(TAU_DEFS)
 TAUCXXLIBS=$(shell tau_cxx.sh -tau:showsharedlibs)
 
-CXXFLAGS=-I./include -DADIOS2_USE_MPI -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX -Dadios2_cxx11_EXPORTS -g -O0 -fPIC -std=c++11
-LDFLAGS = -shared -g -O0
+CXXFLAGS=-I./include -DADIOS2_USE_MPI -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX -Dadios2_cxx11_EXPORTS -g -O3 -fPIC -std=c++11
+LDFLAGS = -shared -g -O3
 
 libadios2_wrap.so: adios2_wrap.o
 	$(TAU_CXX) $(LDFLAGS) -o $@ $< $(TAUCXXFLIBS) -ldl $(LDFLAGS)

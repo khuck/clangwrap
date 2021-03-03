@@ -54,6 +54,7 @@
     "TAU timer group": "ADIOS2_API",
     "enable trace plugin": true,
     "printable trace types": [
+        "bool",
         "char",
         "short",
         "int",
@@ -66,6 +67,18 @@
         "size_t",
         "std::complex<float>",
         "std::complex<double>",
-        "std::string"
+        "std::string",
+        "adios2::IO",
+        "adios2::Variable",
+        "Variable",
+        "adios2::Attribute",
+        "Attribute"
+    ],
+    "future printable trace types": [
+        "adios2::Engine",
+        "adios2::Dims",
+        "adios2::Params",
+        "adios2::vParams",
+        "adios2::Box"
     ]
 }
