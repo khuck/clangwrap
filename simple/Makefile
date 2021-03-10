@@ -42,6 +42,6 @@ clean:
 
 test: app ../src/tau_wrap++ libsecret_wrap.so
 	rm -rf profile.* skel
-	tau_exec -T serial -loadlib=./libsecret_wrap.so ./app
+	tau_exec -T serial -loadlib=./libsecret_wrap.so -skel ./app
 	pprof
 	#cat skel/rank00000.trace

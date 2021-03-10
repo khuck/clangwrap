@@ -49,7 +49,9 @@
         "adios2::Variable::Operations",
         "adios2::ADIOS::DefineCallBack",
         "adios2::detail::Span::begin",
-        "adios2::detail::Span::end"
+        "adios2::detail::Span::end",
+        "adios2::IO::Name",
+        "adios2::ToString"
     ],
     "TAU timer group": "ADIOS2_API",
     "enable trace plugin": true,
@@ -72,11 +74,14 @@
         "adios2::Variable",
         "Variable",
         "adios2::Attribute",
-        "Attribute"
+        "Attribute",
+        "adios2::Dims",
+        "adios2::Engine",
+        "adios2::Mode",
+        "adios2::StepStatus",
+        "MPI_Comm"
     ],
     "future printable trace types": [
-        "adios2::Engine",
-        "adios2::Dims",
         "adios2::Params",
         "adios2::vParams",
         "adios2::Box"

@@ -312,35 +312,15 @@ template<class T> T* load_symbol(char const* name) {
 }
 )";
     constexpr const char * helperFunctions = R"(
-size_t& getDepth() {
-    thread_local static size_t depth{0};
-    return depth;
-}
-
-class DepthCounter {
-public:
-    DepthCounter() {
-        getDepth()++;
-    }
-    ~DepthCounter() {
-        getDepth()--;
-    }
-    bool timeit() {
-        if (getDepth() == 1) {
-            return true;
-        }
-        return false;
-    }
-};
-
 /* Helper to trace vector parameters */
 template < class T >
 std::string ToString(const std::vector<T>& v) {
     std::stringstream ss;
-    ss << "[";
+    std::string d{"["};
     for (const auto &e : v) {
+        ss << d;
         ss << e;
-        if(e != v.rbegin()) { ss << ","; }
+        d = ",";
     }
     ss << "]";
     std::string tmp{ss.str()};
@@ -362,10 +342,11 @@ std::ostream& std::operator<<(std::ostream& os, std::vector<T>& v) {
 /* Helper to trace set parameters */
 template < class T >
 std::ostream& std::operator<<(std::ostream& os, const std::set<T>& s) {
-    os << "[";
+    std::string d{"["};
     for (const auto &e : s) {
+        os << d;
         os << e;
-        if(e != s.rbegin()) { os << ","; }
+        d = ",";
     }
     os << "]";
     return os;
@@ -373,10 +354,11 @@ std::ostream& std::operator<<(std::ostream& os, const std::set<T>& s) {
 
 template < class T >
 std::ostream& std::operator<<(std::ostream& os, std::set<T>& s) {
-    os << "[";
+    std::string d{"["};
     for (const auto &e : s) {
+        os << d;
         os << e;
-        if(e != s.rbegin()) { os << ","; }
+        d = ",";
     }
     os << "]";
     return os;
@@ -398,10 +380,11 @@ std::ostream& std::operator<<(std::ostream& os, std::pair<T,V>& p) {
 /* Helper to trace map parameters */
 template < class T, class V >
 std::ostream& std::operator<<(std::ostream& os, const std::map<T,V>& m) {
-    os << "[";
+    std::string d{"["};
     for (const auto &kv : m) {
+        os << d;
         os << kv.first << ":" << kv.second;
-        if(kv != kv.rbegin()) { os << ","; }
+        d = ",";
     }
     os << "]";
     return os;
@@ -409,15 +392,40 @@ std::ostream& std::operator<<(std::ostream& os, const std::map<T,V>& m) {
 
 template < class T, class V >
 std::ostream& std::operator<<(std::ostream& os, std::map<T,V>& m) {
-    os << "[";
+    std::string d{"["};
     for (const auto &kv : m) {
+        os << d;
         os << kv.first << ":" << kv.second;
-        if(kv != kv.rbegin()) { os << ","; }
+        d = ",";
     }
     os << "]";
     return os;
 }
+
+template<class T>
+std::string escape_me(T var) {
+    std::stringstream ss;
+    ss << var;
+    std::string tmp{ss.str()};
+    std::string::size_type n = 0;
+    const std::string doublequote{"\""};
+    const std::string singlequote{"'"};
+    while ( ( n = tmp.find( doublequote, n ) ) != std::string::npos )
+    {
+        tmp.replace( n, doublequote.size(), singlequote);
+        n += singlequote.size();
+    }
+    return tmp;
+}
+
+/* To support the adios2::Dim type */
+template<>
+std::string escape_me <std::vector<long unsigned int>>(std::vector<long unsigned int> var) {
+    std::string tmp{ToString(var)};
+    return tmp;
+}
 )";
+
     constexpr const char * tauPluginFunction = R"(
 void Tau_plugin_trace_current_timer(const char * name) {
     /*Invoke plugins only if both plugin path and plugins are specified*/
@@ -768,50 +776,83 @@ std::string trimSpecialization(std::string fullType) {
     return fullType;
 }
 
-void writeTraceEvent(std::ofstream& wrapper,
+void writeThisValue(
+    std::ofstream& wrapper,
     std::string& fullMethodName,
-    std::string& methodReturnType,
-    std::vector<std::string>& parameterNames,
-    std::vector<std::string>& parameterTypes,
-    bool hasReturn, bool hasThis
+    bool hasThis
     ) {
-    wrapper << "std::stringstream ss;\n";
-    wrapper << "ss << \"\\\"type\\\": \\\"";
-    wrapper << get_tau_timer_group();
-    wrapper << "\\\", \\\"function\\\": \\\"";
-    wrapper << fullMethodName;
-    wrapper << "\\\"";
-    if (hasReturn) {
-        wrapper << ", \\\"return\\\": \\\"\" << ";
-        if (isPrintable(trimSpecialization(methodReturnType))) {
-            wrapper << "retval << \"\\\"";
-        } else {
-            wrapper << "(void*)(std::addressof(retval)) << \"\\\"";
-        }
-    }
     if (hasThis) {
         std::string classType{getClassFromMethod(fullMethodName)};
-        //std::cout << classType << std::endl;
         if (isPrintable(classType)) {
-            wrapper << ", \\\"this\\\": \\\"\" << *this << \"\\\"";
+            wrapper << "std::string tv{escape_me(*this)};\n";
         } else {
-            wrapper << ", \\\"this\\\": \\\"\" << (void*)this << \"\\\"";
+            wrapper << "void* tv = (void*)(this);\n";
         }
     }
-    for (size_t i = 0; i < parameterTypes.size() ; i++) {
-        wrapper << ", \\\"" << parameterNames[i] << "\\\": \\\"\" << ";
-        if (isPrintable(trimSpecialization(parameterTypes[i]))) {
-            wrapper << parameterNames[i];
+}
+
+void writeReturnValue(
+    std::ofstream& wrapper,
+    std::string& methodReturnType,
+    bool hasReturn
+    ) {
+    if (hasReturn) {
+        if (isPrintable(trimSpecialization(methodReturnType))) {
+            wrapper << "std::string rv{escape_me(retval)};\n";
         } else {
-            wrapper << "(void*)(std::addressof(";
+            wrapper << "void* rv = (void*)(std::addressof(retval));\n";
+        }
+    }
+}
+
+void writeArgsValues(std::ofstream& wrapper,
+    std::vector<std::string>& parameterNames,
+    std::vector<std::string>& parameterTypes
+    ) {
+    wrapper << "std::stringstream ssargs;\n";
+    wrapper << "ssargs << \"{";
+    std::string d{" "};
+    for (size_t i = 0; i < parameterTypes.size() ; i++) {
+        wrapper << d << "\\\"" << i << "\\\": {\\\"name\\\": ";
+        wrapper << "\\\"" << parameterNames[i] << "\\\", ";
+        wrapper << "\\\"value\\\": \\\"\";\n";
+        if (isPrintable(trimSpecialization(parameterTypes[i]))) {
+            wrapper << "std::string at" << i << "{";
+            wrapper << "escape_me(" << parameterNames[i] << ")};\n";
+            wrapper << "ssargs << at" << i;
+        } else {
+            wrapper << "ssargs << (void*)(std::addressof(";
             wrapper << parameterNames[i];
             wrapper << "))";
         }
-        wrapper << " << \"\\\"";
+        wrapper << " << \"\\\", \\\"type\\\": \\\"";
+        wrapper << parameterTypes[i] << "\\\"}";
+        d = ", ";
     }
+    wrapper << "}\";\n";
+    wrapper << "std::string argsv{ssargs.str()};\n";
+}
+
+void writeTraceEvent(std::ofstream& wrapper,
+    std::string& fullMethodName,
+    bool hasReturn, bool hasThis
+    ) {
+    wrapper << "std::stringstream ss;\n";
+    wrapper << "ss << \"\\\"cat\\\": \\\"";
+    wrapper << get_tau_timer_group();
+    wrapper << "\\\", \\\"name\\\": \\\"";
+    wrapper << fullMethodName;
+    wrapper << "\\\"";
+    if (hasReturn) {
+        wrapper << ", \\\"return\\\": \\\"\" << rv << \"\\\"";
+    }
+    if (hasThis) {
+        wrapper << ", \\\"this\\\": \\\"\" << tv << \"\\\"";
+    }
+    wrapper << ", \\\"args\\\": \" << argsv << \"";
     wrapper << "\";\n";
-    wrapper << "std::string tmp{ss.str()};\n";
-    wrapper << "Tau_plugin_trace_current_timer(tmp.c_str());\n";
+    wrapper << "std::string trace_string{ss.str()};\n";
+    //wrapper << "Tau_plugin_trace_current_timer(trace_string.c_str());\n";
 }
 
 void writeMethod(
@@ -842,25 +883,23 @@ int Secret::foo1(int a1)  {
   }
  */
     validateParameterNames(parameterNames);
-    // get the mangled name
-    //if (methodMangled.size() == 0) {
-        methodMangled = makeMangled(
-            namespaceName,
-            className,
-            methodName,
-            methodReturnType,
-            methodType,
-            methodStatic,
-            parameterNames,
-            parameterTypes,
-            (numSpecializations > 0), // isTemplate
-            templateType,
-            instanceType);
-    //}
+    methodMangled = makeMangled(
+        namespaceName,
+        className,
+        methodName,
+        methodReturnType,
+        methodType,
+        methodStatic,
+        parameterNames,
+        parameterTypes,
+        (numSpecializations > 0), // isTemplate
+        templateType,
+        instanceType);
     // no mangled exists?  don't need it.
     if (methodMangled.size() == 0) {
         return;
     }
+
     // Write a comment header
     wrapper << "/" << std::string(80,'*') << "\n";
     wrapper << _space;
@@ -869,6 +908,7 @@ int Secret::foo1(int a1)  {
     }
     wrapper << methodName << "\n";
     wrapper << _space << std::string(80,'*') << "/\n\n";
+
     // declare the function type, class and name
     std::stringstream ss;
     for (size_t i = 0 ; i < numSpecializations ; i++) {
@@ -881,6 +921,7 @@ int Secret::foo1(int a1)  {
         ss << cn << "::";
     }
     ss << methodName;
+
     // write the arguments
     std::stringstream args;
     args << "(";
@@ -925,6 +966,7 @@ int Secret::foo1(int a1)  {
     // write the arguments
     std::string fullSignature{ss2.str()};
     wrapper << signature << " {\n";
+
     // write a debugger line
     wrapper << "    MARKER;\n";
     wrapper << "    const char * mangled = \"" << methodMangled << "\";\n";
@@ -938,10 +980,8 @@ int Secret::foo1(int a1)  {
         if (methodIsConst(methodType)) {
             ctype << "const ";
         }
-        //if (!isConstructor) {
-            ctype << "void*";
-            multiple = true;
-        //}
+        ctype << "void*";
+        multiple = true;
     }
     for (auto p : parameterTypes) {
         if (multiple) { ctype << ","; }
@@ -953,50 +993,68 @@ int Secret::foo1(int a1)  {
     wrapper << "    using f_t = " << ctype.str() << ";\n";
     // get the symbol if necessary
     wrapper << "    static f_t* f{load_symbol<f_t>(mangled)};\n";
+    wrapper << "    if (Tau_time_traced_api_call() == 1) {\n";
+    wrapper << "    Tau_traced_api_call_enter();\n";
     // declare and start the timer
-    wrapper << "    DepthCounter depth;\n";
-    wrapper << "    if (depth.timeit()) {\n";
-    // call the actual function with timer
-    wrapper << "        WRAPPER(timer_name);\n";
-    wrapper << "        ";
-    if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
-        wrapper << methodReturnType << " retval = ";
-    }
-    wrapper << "f(";
-    multiple = false;
-    if (!methodStatic && className.size() > 0) {
-        //if (!isConstructor) {
-            wrapper << "this";
-            multiple = true;
-        //}
-    }
-    for (auto p : parameterNames) {
-        if (multiple) { wrapper << ", "; }
-        wrapper << p;
-        multiple = true;
-    }
-    wrapper << ");\n";
+    wrapper << "    WRAPPER(timer_name);\n";
     /* Optionally, generate a timer exit plugin call */
     bool do_trace = false;
     if (configuration.count(enable_trace_plugin) > 0) {
         do_trace = configuration[enable_trace_plugin];
     }
+    // get the value of "this" NOW, in case the function destroys
+    // any of the arguments, including the "this" pointer.
+    // We won't be able to get it after the destructor is called.
     if (do_trace) {
+        if (!isConstructor){
+            writeThisValue(wrapper, fullMethodName,
+                (!methodStatic && className.size() > 0));
+        }
+        writeArgsValues(wrapper, parameterNames, parameterTypes);
+    }
+    // call the actual function with timer
+    wrapper << "    ";
+    if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
+        wrapper << methodReturnType << " retval = ";
+    }
+    wrapper << "f(";
+    multiple = false;
+    if (!methodStatic && className.size() > 0) {
+        wrapper << "this";
+        multiple = true;
+    }
+    for (auto p : parameterNames) {
+        if (multiple) { wrapper << ", "; }
+        wrapper << p;
+        multiple = true;
+    }
+    wrapper << ");\n";
+    if (do_trace) {
+        // get the value of "this" NOW, in case this is a constructor!
+        // We won't be able to get it before the constructor is called.
+        if (isConstructor){
+            writeThisValue(wrapper, fullMethodName,
+                (!methodStatic && className.size() > 0));
+        }
+        // get the return value now, too - it wasn't available before the call
+        writeReturnValue(wrapper, methodReturnType,
+            (hasReturnType(methodReturnType, isConstructor, isDestructor)));
+        // now build the full string and write a trace event.
         writeTraceEvent(wrapper, fullMethodName,
-            methodReturnType, parameterNames, parameterTypes,
             (hasReturnType(methodReturnType, isConstructor, isDestructor)),
             (!methodStatic && className.size() > 0));
+        wrapper << "Tau_plugin_trace_current_timer(trace_string.c_str());\n";
     }
+    wrapper << "    Tau_traced_api_call_exit();\n";
     if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
         if(typeIsAddress(methodReturnType) || typeIsReference(methodReturnType)) {
-            wrapper << "        return retval;\n";
+            wrapper << "    return retval;\n";
         } else {
-            wrapper << "        return std::move(retval);\n";
+            wrapper << "    return std::move(retval);\n";
         }
     }
     wrapper << "    } else {\n";
-    // call the actual function without timer
-    wrapper << "        ";
+    wrapper << "    ";
     if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
         wrapper << methodReturnType << " retval = ";
     }
@@ -1016,9 +1074,9 @@ int Secret::foo1(int a1)  {
     wrapper << ");\n";
     if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
         if(typeIsAddress(methodReturnType) || typeIsReference(methodReturnType)) {
-            wrapper << "        return retval;\n";
+            wrapper << "    return retval;\n";
         } else {
-            wrapper << "        return std::move(retval);\n";
+            wrapper << "    return std::move(retval);\n";
         }
     }
     wrapper << "    }\n";

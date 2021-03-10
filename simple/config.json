@@ -28,5 +28,21 @@
     "methods to skip": [
     ],
     "TAU timer group": "SECRET",
-    "enable trace plugin": false
+    "enable trace plugin": true,
+    "printable trace types": [
+        "bool",
+        "char",
+        "short",
+        "int",
+        "long int",
+        "long long int",
+        "long",
+        "long long",
+        "float",
+        "double",
+        "size_t",
+        "std::complex<float>",
+        "std::complex<double>",
+        "std::string"
+    ]
 }
