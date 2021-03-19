@@ -21,7 +21,7 @@ adios2_wrap.o: wr.cpp
 
 wr.cpp: ../src/tau_wrap++ config.json
 	rm -f symbol.log
-	../src/tau_wrap++ $(ADIOS2_ROOT)/include/adios2.h -w $(ADIOS2_ROOT)/lib64/libadios2_cxx11.so -w $(ADIOS2_ROOT)/lib64/libadios2_cxx11_mpi.so -n adios2 -c config.json
+	../src/tau_wrap++ $(ADIOS2_ROOT)/include/adios2.h -w $(ADIOS2_ROOT)/lib/libadios2_cxx11.so -w $(ADIOS2_ROOT)/lib/libadios2_cxx11_mpi.so -n adios2 -c config.json
 clean:
 	/bin/rm -f adios2_wrap.o libadios2_wrap.so wr.cpp cursor.log symbol.log
 

@@ -723,6 +723,41 @@ bool hasReturnType(std::string methodReturnType, bool isConstructor, bool isDest
     return true;
 }
 
+std::set<std::string>& getNonMovableTypes() {
+    static std::set<std::string> typeset;
+    typeset.insert("void");
+    typeset.insert("bool");
+    typeset.insert("char");
+    typeset.insert("short");
+    typeset.insert("int");
+    typeset.insert("long int");
+    typeset.insert("long long int");
+    typeset.insert("long");
+    typeset.insert("long long");
+    typeset.insert("float");
+    typeset.insert("double");
+    typeset.insert("size_t");
+    typeset.insert("std::complex<float>");
+    typeset.insert("std::complex<double>");
+    typeset.insert("std::string");
+    return typeset;
+}
+
+bool hasMovableReturnType(std::string methodReturnType) {
+    static std::set<std::string> typeset = getNonMovableTypes();
+    if (methodReturnType.size() == 0) {
+        return false;
+    }
+    std::string tmp{methodReturnType};
+    replace_all(tmp, _const, _empty);
+    replace_all(tmp, _unsigned, _empty);
+    replace_all(tmp, _signed, _empty);
+    if (typeset.count(tmp) > 0) {
+        return false;
+    }
+    return true;
+}
+
 std::set<std::string> loadPrintableTraceTypes() {
     std::set<std::string> typeset;
     if (configuration.count(printable_trace_types) > 0) {
@@ -1047,7 +1082,9 @@ int Secret::foo1(int a1)  {
     }
     wrapper << "    Tau_traced_api_call_exit();\n";
     if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
-        if(typeIsAddress(methodReturnType) || typeIsReference(methodReturnType)) {
+        if(typeIsAddress(methodReturnType) ||
+           typeIsReference(methodReturnType) ||
+           !hasMovableReturnType(methodReturnType)) {
             wrapper << "    return retval;\n";
         } else {
             wrapper << "    return std::move(retval);\n";
@@ -1073,7 +1110,9 @@ int Secret::foo1(int a1)  {
     }
     wrapper << ");\n";
     if (hasReturnType(methodReturnType, isConstructor, isDestructor)) {
-        if(typeIsAddress(methodReturnType) || typeIsReference(methodReturnType)) {
+        if(typeIsAddress(methodReturnType) ||
+           typeIsReference(methodReturnType) ||
+           !hasMovableReturnType(methodReturnType)) {
             wrapper << "    return retval;\n";
         } else {
             wrapper << "    return std::move(retval);\n";
@@ -1108,7 +1147,6 @@ void writeTemplate(
     std::vector<std::string> templateTypes,
     bool modifyName = true) {
     //std::cout << __func__ << std::endl;
-
     /* get the template instantiation types to be tried */
     static auto currentTypes = getInstantiations();
     static size_t numTypes = currentTypes.size();
@@ -1296,13 +1334,66 @@ std::string getCursorMangled( CXCursor cursor )
 
 std::string getCursorReturnType( CXCursor cursor )
 {
-  CXType cursorType = clang_getCursorType( cursor );
-  CXType resultType = clang_getResultType( cursorType );
+  //CXType cursorType = clang_getCursorType( cursor );
+  //CXType resultType = clang_getResultType( cursorType );
+  CXType resultType = clang_getCursorResultType( cursor );
   CXString cursorString = clang_getTypeSpelling( resultType );
   std::string result      = clang_getCString( cursorString );
 
   clang_disposeString( cursorString );
   return result;
+}
+
+std::string validateReturnType(CXCursor c, std::vector<std::string> namespaceNames,
+    std::string methodName, std::string methodReturnType) {
+    if (methodReturnType.compare("int") != 0) {
+        return methodReturnType;
+    }
+    // get translation unit
+    CXTranslationUnit unit = clang_Cursor_getTranslationUnit(c);
+    // get line of location
+    CXFile file;
+    unsigned line;
+    unsigned column;
+    unsigned offset;
+    // get Range
+    CXSourceRange range = clang_getCursorExtent(c);
+    CXSourceLocation start = clang_getRangeStart(range);
+    clang_getExpansionLocation(start, &file, &line, &column, &offset);
+    //std::cout << "start: " << line << "," << column << "," << offset << std::endl;
+    CXSourceLocation end = clang_getRangeEnd(range);
+    clang_getExpansionLocation(end, &file, &line, &column, &offset);
+    //std::cout << "end: " << line << "," << column << "," << offset << std::endl;
+    // get Tokens
+    CXToken * tokens;
+    unsigned int numTokens;
+    clang_tokenize(unit, range, &tokens, &numTokens);
+    // iterate over the tokens
+    std::stringstream ss;
+    for (unsigned int i = 0; i < numTokens; i++) {
+        CXString tokenString = clang_getTokenSpelling(unit, tokens[i]);
+        std::string result = clang_getCString( tokenString );
+        clang_disposeString( tokenString );
+        if (result.compare(methodName) == 0) {
+            if (methodReturnType.compare(ss.str()) == 0) {
+                return methodReturnType;
+            }
+            std::stringstream fcn;
+            for (auto n : namespaceNames) {
+                fcn << n << "::";
+            }
+            fcn << ss.str();
+            if (methodReturnType.compare(fcn.str()) == 0) {
+                std::string foundtype{fcn.str()};
+                return foundtype;
+            }
+            std::string foundtype{ss.str()};
+            std::cout << "changing return type! " << methodReturnType << " to " << foundtype << std::endl;
+            return foundtype;
+        }
+        ss << result;
+    }
+    return methodReturnType;
 }
 
 bool isMethodDeleted(CXCursor c) {
@@ -1573,6 +1664,7 @@ void handleMethod(CXCursor c, CXCursorKind kind, ASTState* state, bool isConstru
         wrapper << "/* " << getCursorFileLocation(c) << " */" << std::endl;
         clang_visitChildren(c, traverse, state);
         if (state->inClassTemplate) {
+            //methodReturnType = validateReturnType(c, state->namespaceName, methodName, methodReturnType);
             writeTemplate(
                 state->namespaceName,
                 state->className,
@@ -1587,6 +1679,7 @@ void handleMethod(CXCursor c, CXCursorKind kind, ASTState* state, bool isConstru
                 state->functionTemplates,
                 false);
         } else {
+            //methodReturnType = validateReturnType(c, state->namespaceName, methodName, methodReturnType);
             writeMethod(
                 state->namespaceName,
                 state->className,
@@ -1731,8 +1824,35 @@ CXChildVisitResult traverse(CXCursor c, CXCursor parent, CXClientData clientData
     return CXChildVisit_Continue;
 }
 
+void printDiagnostics(CXTranslationUnit translationUnit){
+    int nbDiag = clang_getNumDiagnostics(translationUnit);
+    printf("There are %i diagnostics:\n",nbDiag);
+
+    unsigned int currentDiag = 0;
+    bool foundError = false;
+    for (currentDiag = 0; currentDiag < nbDiag; ++currentDiag) {
+        CXDiagnostic diagnotic = clang_getDiagnostic(translationUnit, currentDiag);
+        CXString errorString = clang_formatDiagnostic(diagnotic,clang_defaultDiagnosticDisplayOptions());
+        std::string tmp{clang_getCString(errorString)};
+        clang_disposeString(errorString);
+        if (tmp.find("error:") != std::string::npos) {
+            foundError = true;
+        }
+        std::cerr << tmp << std::endl;
+    }
+    if (currentDiag > 0 && foundError) { 
+        std::cerr << "Please resolve these issues and try again." <<std::endl;
+        exit(-1);
+    }
+}
+
 void parse_header(const std::string& filename) {
-    CXIndex index = clang_createIndex(1,1);
+    if( access( filename.c_str(), F_OK ) != 0 ) {
+        // file doesn't exist
+        std::cerr << "Error: " << filename << " not found." << std::endl;
+        exit(-1);
+    }
+    CXIndex index = clang_createIndex(1,0);
     if (configuration.count(parser_flags) == 0) {
         std::cerr << "Configuration has no parser flags specified!" << std::endl;
         abort();
@@ -1752,6 +1872,7 @@ void parse_header(const std::string& filename) {
             nullptr,
             0,
             CXTranslationUnit_None);
+    printDiagnostics(unit);
     if (unit == nullptr) {
         std::cerr << "Unable to parse translation unit. Quitting." << std::endl;
         exit(-1);
@@ -1763,6 +1884,11 @@ void parse_header(const std::string& filename) {
 }
 
 void parse_symbols(std::string libname) {
+    if( access( libname.c_str(), F_OK ) != 0 ) {
+        // file doesn't exist
+        std::cerr << "Error: " << libname << " not found." << std::endl;
+        exit(-1);
+    }
     std::ofstream symbolLog;
     symbolLog.open("symbol.log", std::fstream::out | std::fstream::app);
     std::cout << "Writing the library symbol log to cursor.log" << std::endl;
