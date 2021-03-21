@@ -10,12 +10,8 @@
         "c++",
         "-std=c++11",
         "-I.",
-        "-I/packages/llvm/11.0.1/include/c++/v1",
-        "-I/packages/llvm/11.0.1/include",
-        "-I/usr/local/packages/gcc/7.3.0/lib/gcc/powerpc64le-unknown-linux-gnu/7.3.0/include",
-        "-I/usr/local/packages/gcc/7.3.0/lib/gcc/powerpc64le-unknown-linux-gnu/7.3.0/include-fixed",
         "-I/usr/include",
-        "-I/usr/local/include"
+	"-I/usr/lib/gcc/x86_64-linux-gnu/9/include"
     ],
     "template_types": [
         "int",

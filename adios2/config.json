@@ -10,10 +10,10 @@
         "c++",
         "-std=c++11",
         "-DADIOS2_USE_MPI",
-	"-I/home/khuck/spack/opt/spack/linux-ubuntu20.04-sandybridge/gcc-9.3.0/adios2-2.6.0-owfkowsc2a3geqdb4a6difho64j3p6p3/include",
-        "-I/home/khuck/spack/opt/spack/linux-ubuntu20.04-sandybridge/gcc-9.3.0/openmpi-4.0.5-w6fqyqgwx7yvbsng67h2sjqfz3ab734i/include",
         "-I/usr/include",
-        "-I/usr/local/include"
+        "-I/usr/lib/gcc/x86_64-linux-gnu/9/include",
+	"-I/home/khuck/spack/opt/spack/linux-ubuntu20.04-sandybridge/gcc-9.3.0/adios2-2.6.0-owfkowsc2a3geqdb4a6difho64j3p6p3/include",
+        "-I/home/khuck/spack/opt/spack/linux-ubuntu20.04-sandybridge/gcc-9.3.0/openmpi-4.0.5-w6fqyqgwx7yvbsng67h2sjqfz3ab734i/include"
     ],
     "template_types": [
         "char",
