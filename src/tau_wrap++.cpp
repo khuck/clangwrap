@@ -263,6 +263,7 @@ void writePreamble(std::string header, std::vector<std::string> libraries) {
 #include <map>
 #include <iostream>
 #include <complex>
+#include "inttypes.h"
 
 #ifdef _DEBUG
 #define MARKER printf("*** %s %s: %d\n", __func__, __FILE__, __LINE__)
@@ -424,6 +425,22 @@ std::string escape_me <std::vector<long unsigned int>>(std::vector<long unsigned
     std::string tmp{ToString(var)};
     return tmp;
 }
+
+std::string convert_comm(MPI_Comm comm) {
+    char tmpstr[33];
+    if (comm == MPI_COMM_WORLD) {
+        sprintf(tmpstr, "MPI_COMM_WORLD");
+    } else if (comm == MPI_COMM_SELF) {
+        sprintf(tmpstr, "MPI_COMM_SELF");
+    } else if (comm == MPI_COMM_NULL) {
+        sprintf(tmpstr, "MPI_COMM_NULL");
+    } else {
+        sprintf(tmpstr, "0x%" PRIx64, (uint64_t)comm);
+    }
+    std::string ts{tmpstr};
+    return ts;
+}
+
 )";
 
     constexpr const char * tauPluginFunction = R"(
@@ -758,6 +775,22 @@ bool hasMovableReturnType(std::string methodReturnType) {
     return true;
 }
 
+bool isMpiComm(std::string type) {
+    if (typeIsAddress(type)) {
+        return false;
+    }
+    // remove any const, (un)signed, or reference (&)
+    replace_all(type, _const, _empty);
+    replace_all(type, _unsigned, _empty);
+    replace_all(type, _signed, _empty);
+    replace_all(type, _reference, _empty);
+    trim(type);
+    if (type.compare("MPI_Comm") == 0) {
+        return true;
+    }
+    return false;
+}
+
 std::set<std::string> loadPrintableTraceTypes() {
     std::set<std::string> typeset;
     if (configuration.count(printable_trace_types) > 0) {
@@ -832,7 +865,9 @@ void writeReturnValue(
     bool hasReturn
     ) {
     if (hasReturn) {
-        if (isPrintable(trimSpecialization(methodReturnType))) {
+        if (isMpiComm(trimSpecialization(methodReturnType))) {
+            wrapper << "std::string rv{convert_comm(retval)};\n";
+        } else if (isPrintable(trimSpecialization(methodReturnType))) {
             wrapper << "std::string rv{escape_me(retval)};\n";
         } else {
             wrapper << "void* rv = (void*)(std::addressof(retval));\n";
@@ -851,7 +886,11 @@ void writeArgsValues(std::ofstream& wrapper,
         wrapper << d << "\\\"" << i << "\\\": {\\\"name\\\": ";
         wrapper << "\\\"" << parameterNames[i] << "\\\", ";
         wrapper << "\\\"value\\\": \\\"\";\n";
-        if (isPrintable(trimSpecialization(parameterTypes[i]))) {
+        if (isMpiComm(trimSpecialization(parameterTypes[i]))) {
+            wrapper << "std::string at" << i << "{";
+            wrapper << "convert_comm(" << parameterNames[i] << ")};\n";
+            wrapper << "ssargs << at" << i;
+        } else if (isPrintable(trimSpecialization(parameterTypes[i]))) {
             wrapper << "std::string at" << i << "{";
             wrapper << "escape_me(" << parameterNames[i] << ")};\n";
             wrapper << "ssargs << at" << i;
