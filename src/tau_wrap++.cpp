@@ -323,7 +323,9 @@ std::string ToString(const std::vector<T>& v) {
         ss << e;
         d = ",";
     }
-    ss << "]";
+    if (v.size() > 0) {
+        ss << "]";
+    }
     std::string tmp{ss.str()};
     return tmp;
 }
