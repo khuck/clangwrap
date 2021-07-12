@@ -351,7 +351,9 @@ std::ostream& std::operator<<(std::ostream& os, const std::set<T>& s) {
         os << e;
         d = ",";
     }
-    os << "]";
+    if (s.size() > 0) {
+        os << "]";
+    }
     return os;
 }
 
@@ -363,7 +365,9 @@ std::ostream& std::operator<<(std::ostream& os, std::set<T>& s) {
         os << e;
         d = ",";
     }
-    os << "]";
+    if (s.size() > 0) {
+        os << "]";
+    }
     return os;
 }
 
@@ -389,7 +393,9 @@ std::ostream& std::operator<<(std::ostream& os, const std::map<T,V>& m) {
         os << kv.first << ":" << kv.second;
         d = ",";
     }
-    os << "]";
+    if (m.size() > 0) {
+        os << "]";
+    }
     return os;
 }
 
@@ -401,7 +407,9 @@ std::ostream& std::operator<<(std::ostream& os, std::map<T,V>& m) {
         os << kv.first << ":" << kv.second;
         d = ",";
     }
-    os << "]";
+    if (m.size() > 0) {
+        os << "]";
+    }
     return os;
 }
 
