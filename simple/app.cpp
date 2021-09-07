@@ -9,11 +9,13 @@
 #include <stdio.h>
 #include <secret.h>
 #include <string>
+#include "mpi.h"
 
 using namespace secret;
 
 int main(int argc, char **argv)
 {
+    MPI_Init(&argc, &argv);
     for (int i = 1 ; i < 2 ; i++) {
         Secret object;
         std::cout << object.getMessage() << std::endl;
@@ -33,5 +35,6 @@ int main(int argc, char **argv)
         object.foo4(one_point_one);
         one_point_one.anotherTemplate(i);
     }
+    MPI_Finalize();
     return 0;
 }

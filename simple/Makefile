@@ -9,10 +9,10 @@
 include ${TAU_MAKEFILE}
 TAUCXXFLAGS=$(shell tau_cxx.sh -tau:showincludes) $(TAU_DEFS)
 TAUCXXLIBS=$(shell tau_cxx.sh -tau:showsharedlibs)
-CXX=g++
+CXX=mpicxx
 
 PWD=$(shell pwd)
-MYCXXFLAGS=-fPIC -I. -g -O3 -std=c++11 -Wall -Werror
+MYCXXFLAGS=-fPIC -I. -g -O3 -std=c++11 -Wall
 LIBS = -L$(PWD) -Wl,-rpath,$(PWD) -lsecret
 LDFLAGS = -shared -g -O3
 

@@ -264,6 +264,7 @@ void writePreamble(std::string header, std::vector<std::string> libraries) {
 #include <iostream>
 #include <complex>
 #include "inttypes.h"
+#include "mpi.h"
 
 #ifdef _DEBUG
 #define MARKER printf("*** %s %s: %d\n", __func__, __FILE__, __LINE__)
@@ -331,20 +332,20 @@ std::string ToString(const std::vector<T>& v) {
 }
 
 template < class T >
-std::ostream& std::operator<<(std::ostream& os, const std::vector<T>& v) {
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
     os << ToString(v);
     return os;
 }
 
 template < class T >
-std::ostream& std::operator<<(std::ostream& os, std::vector<T>& v) {
+std::ostream& operator<<(std::ostream& os, std::vector<T>& v) {
     os << ToString(v);
     return os;
 }
 
 /* Helper to trace set parameters */
 template < class T >
-std::ostream& std::operator<<(std::ostream& os, const std::set<T>& s) {
+std::ostream& operator<<(std::ostream& os, const std::set<T>& s) {
     std::string d{"["};
     for (const auto &e : s) {
         os << d;
@@ -358,7 +359,7 @@ std::ostream& std::operator<<(std::ostream& os, const std::set<T>& s) {
 }
 
 template < class T >
-std::ostream& std::operator<<(std::ostream& os, std::set<T>& s) {
+std::ostream& operator<<(std::ostream& os, std::set<T>& s) {
     std::string d{"["};
     for (const auto &e : s) {
         os << d;
@@ -373,20 +374,20 @@ std::ostream& std::operator<<(std::ostream& os, std::set<T>& s) {
 
 /* Helper to trace pair parameters */
 template < class T, class V >
-std::ostream& std::operator<<(std::ostream& os, const std::pair<T,V>& p) {
+std::ostream& operator<<(std::ostream& os, const std::pair<T,V>& p) {
     os << "(" << p.first << "," << p.second << ')';
     return os;
 }
 
 template < class T, class V >
-std::ostream& std::operator<<(std::ostream& os, std::pair<T,V>& p) {
+std::ostream& operator<<(std::ostream& os, std::pair<T,V>& p) {
     os << "(" << p.first << "," << p.second << ')';
     return os;
 }
 
 /* Helper to trace map parameters */
 template < class T, class V >
-std::ostream& std::operator<<(std::ostream& os, const std::map<T,V>& m) {
+std::ostream& operator<<(std::ostream& os, const std::map<T,V>& m) {
     std::string d{"["};
     for (const auto &kv : m) {
         os << d;
@@ -400,7 +401,7 @@ std::ostream& std::operator<<(std::ostream& os, const std::map<T,V>& m) {
 }
 
 template < class T, class V >
-std::ostream& std::operator<<(std::ostream& os, std::map<T,V>& m) {
+std::ostream& operator<<(std::ostream& os, std::map<T,V>& m) {
     std::string d{"["};
     for (const auto &kv : m) {
         os << d;
@@ -1889,7 +1890,7 @@ void printDiagnostics(CXTranslationUnit translationUnit){
         }
         std::cerr << tmp << std::endl;
     }
-    if (currentDiag > 0 && foundError) { 
+    if (currentDiag > 0 && foundError) {
         std::cerr << "Please resolve these issues and try again." <<std::endl;
         exit(-1);
     }
