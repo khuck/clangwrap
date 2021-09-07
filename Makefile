@@ -8,7 +8,7 @@
 
 TOPTARGETS=all clean test
 
-SUBDIRS=src simple
+SUBDIRS=src simple adios2
 
 $(TOPTARGETS): $(SUBDIRS)
 

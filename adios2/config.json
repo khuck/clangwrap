@@ -11,9 +11,9 @@
         "-std=c++11",
         "-DADIOS2_USE_MPI",
         "-I/usr/include",
-        "-I/usr/lib/gcc/x86_64-linux-gnu/9/include",
-	"-I/home/khuck/spack/opt/spack/linux-ubuntu20.04-sandybridge/gcc-9.3.0/adios2-2.6.0-owfkowsc2a3geqdb4a6difho64j3p6p3/include",
-        "-I/home/khuck/spack/opt/spack/linux-ubuntu20.04-sandybridge/gcc-9.3.0/openmpi-4.0.5-w6fqyqgwx7yvbsng67h2sjqfz3ab734i/include"
+        "-I/usr/lib/gcc/ppc64le-redhat-linux/8/include",
+	"-I/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-8.3.1/adios2-2.7.1-qgvkilqehwcpbhkyor5d3v2yu36enpkh/include",
+        "-I/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/clang-10.0.1-0/spectrum-mpi-10.4.0.3-20210112-spo3gshjzrrkvy3wl6ox3pmqjhu2zy3p/include"
     ],
     "template_types": [
         "char",
